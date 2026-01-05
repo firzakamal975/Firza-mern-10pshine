@@ -1,23 +1,23 @@
 const express = require('express');
 const dotenv = require('dotenv');
 const cors = require('cors');
+const { connectDB } = require('./src/config/db'); // 1. Import the connection
 
-// Load env variables
 dotenv.config();
 
 const app = express();
 
-// Middleware
+// 2. Execute the connection
+connectDB();
+
 app.use(cors());
 app.use(express.json());
 
-// Basic Route for testing
 app.get('/', (req, res) => {
-  res.send('API is running...');
+  res.send('API is running and Database is connected!');
 });
 
 const PORT = process.env.PORT || 5000;
-
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });
