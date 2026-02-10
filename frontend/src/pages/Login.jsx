@@ -11,11 +11,20 @@ const Login = () => {
     e.preventDefault();
     setLoading(true);
     try {
+      // Backend API call
       const response = await axios.post('http://localhost:5000/api/auth/login', formData);
-      localStorage.setItem('token', response.data.token); // Token save karne ke liye
+      
+      // 🔑 IMPORTANT: Dashboard ko chalne ke liye ye dono cheezein chahiye
+      localStorage.setItem('token', response.data.token); 
+      localStorage.setItem('user', JSON.stringify(response.data.user)); // User object save kiya
+
       alert('🔑 Login Successful! Welcome back.');
-      navigate('/dashboard'); // Login ke baad kahan jana hai
+      
+      // 🚀 Redirect to Dashboard
+      navigate('/dashboard'); 
+      
     } catch (err) {
+      console.error(err);
       alert(err.response?.data?.message || '❌ Login Failed');
     } finally {
       setLoading(false);
@@ -24,10 +33,10 @@ const Login = () => {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-[#0a0f1e] p-4">
-      {/* Floating Card - Exactly matching Signup style */}
+      {/* Floating Card */}
       <div className="relative w-full max-w-4xl bg-gradient-to-br from-[#00d2ff] via-[#4a00e0] to-[#8e2de2] rounded-[2.5rem] shadow-2xl overflow-hidden flex flex-col md:flex-row min-h-[550px] border border-white/10">
         
-        {/* Left Side: Text Content (Reversed Gradient for variety) */}
+        {/* Left Side: Text Content */}
         <div className="w-full md:w-5/12 p-12 flex flex-col justify-center text-white bg-black/10 backdrop-blur-sm">
           <h1 className="text-6xl font-black mb-6 tracking-tighter">Login</h1>
           <p className="text-white/80 text-lg font-medium leading-relaxed">
@@ -74,9 +83,9 @@ const Login = () => {
               <button 
                 type="submit" 
                 disabled={loading}
-                className="bg-gradient-to-r from-[#ec4899] via-[#3a7bd5] to-[#00d2ff] text-white font-black py-4 px-12 rounded-full shadow-xl hover:scale-105 active:scale-95 transition-all duration-300"
+                className="bg-gradient-to-r from-[#ec4899] via-[#3a7bd5] to-[#00d2ff] text-white font-black py-4 px-12 rounded-full shadow-xl hover:scale-105 active:scale-95 transition-all duration-300 disabled:opacity-50"
               >
-                {loading ? 'Logging in...' : 'Login Button'}
+                {loading ? 'Logging in...' : 'Login Now'}
               </button>
             </div>
           </form>
