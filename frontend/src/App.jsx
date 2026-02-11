@@ -6,9 +6,10 @@ import Dashboard from './pages/Dashboard';
 import ForgotPassword from './pages/ForgotPassword';
 import ResetPassword from './pages/ResetPassword';
 import Profile from './pages/Profile';
-// Naye pages import kiye
 import AppSettings from './pages/AppSettings'; 
 import FavoriteNotes from './pages/FavoriteNotes';
+// 1. Naya PublicView page import karein
+import PublicView from './pages/PublicView'; 
 
 const ProtectedRoute = ({ children }) => {
   const token = localStorage.getItem('token');
@@ -36,6 +37,10 @@ function App() {
         <Route path="/signup" element={<Signup />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/reset-password/:token" element={<ResetPassword />} />
+
+        {/* --- PUBLIC ROUTE (No Login Required) --- */}
+        {/* Isay ProtectedRoute ke bahar rakha hai taake har koi dekh sake */}
+        <Route path="/view-note/:id" element={<PublicView />} />
         
         {/* Dashboard Route */}
         <Route 
@@ -57,8 +62,6 @@ function App() {
           } 
         />
 
-        {/* --- NAYE ROUTES ADD KIYE --- */}
-        
         {/* Favorite Notes Route */}
         <Route 
           path="/favorites" 
