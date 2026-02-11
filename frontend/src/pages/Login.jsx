@@ -11,16 +11,12 @@ const Login = () => {
     e.preventDefault();
     setLoading(true);
     try {
-      // Backend API call
       const response = await axios.post('http://localhost:5000/api/auth/login', formData);
       
-      // 🔑 IMPORTANT: Dashboard ko chalne ke liye ye dono cheezein chahiye
       localStorage.setItem('token', response.data.token); 
-      localStorage.setItem('user', JSON.stringify(response.data.user)); // User object save kiya
+      localStorage.setItem('user', JSON.stringify(response.data.user));
 
       alert('🔑 Login Successful! Welcome back.');
-      
-      // 🚀 Redirect to Dashboard
       navigate('/dashboard'); 
       
     } catch (err) {
@@ -33,10 +29,8 @@ const Login = () => {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-[#0a0f1e] p-4">
-      {/* Floating Card */}
       <div className="relative w-full max-w-4xl bg-gradient-to-br from-[#00d2ff] via-[#4a00e0] to-[#8e2de2] rounded-[2.5rem] shadow-2xl overflow-hidden flex flex-col md:flex-row min-h-[550px] border border-white/10">
         
-        {/* Left Side: Text Content */}
         <div className="w-full md:w-5/12 p-12 flex flex-col justify-center text-white bg-black/10 backdrop-blur-sm">
           <h1 className="text-6xl font-black mb-6 tracking-tighter">Login</h1>
           <p className="text-white/80 text-lg font-medium leading-relaxed">
@@ -44,14 +38,13 @@ const Login = () => {
           </p>
           <div className="mt-12">
             <div className="w-16 h-16 bg-white/10 rounded-2xl flex items-center justify-center border border-white/20">
-               <span className="text-3xl text-white">🔐</span>
+                <span className="text-3xl text-white">🔐</span>
             </div>
           </div>
         </div>
 
-        {/* Right Side: Glass Form */}
         <div className="w-full md:w-7/12 p-12 bg-white/10 backdrop-blur-2xl flex flex-col justify-center border-l border-white/10">
-          <form onSubmit={handleLogin} className="space-y-8">
+          <form onSubmit={handleLogin} className="space-y-6">
             
             <div>
               <label className="text-white/70 text-xs font-bold uppercase mb-2 block ml-1 tracking-widest">Email Address</label>
@@ -73,6 +66,15 @@ const Login = () => {
                 onChange={(e) => setFormData({...formData, password: e.target.value})} 
                 required 
               />
+              {/* --- Forgot Password Link --- */}
+              <div className="flex justify-end mt-2">
+                <Link 
+                  to="/forgot-password" 
+                  className="text-white/50 hover:text-cyan-400 text-xs font-bold transition-colors tracking-tight"
+                >
+                  Forgot Password?
+                </Link>
+              </div>
             </div>
 
             <div className="pt-6 flex items-center justify-between">
@@ -91,7 +93,6 @@ const Login = () => {
           </form>
         </div>
 
-        {/* Diagonal Shine Effect */}
         <div className="absolute top-0 left-0 w-full h-full pointer-events-none bg-gradient-to-tr from-transparent via-white/5 to-transparent rotate-12 transform scale-150"></div>
       </div>
     </div>

@@ -10,16 +10,35 @@ const Note = sequelize.define('Note', {
     },
     title: {
         type: DataTypes.STRING,
-        allowNull: false
+        allowNull: false,
+        validate: {
+            notEmpty: true
+        }
     },
     content: {
         type: DataTypes.TEXT,
-        allowNull: false
+        allowNull: false,
+        validate: {
+            notEmpty: true
+        }
+    },
+    tags: {
+        type: DataTypes.JSON,
+        defaultValue: []
     }
+}, {
+    tableName: 'notes',
+    timestamps: true
 });
 
-// Relationship: Ek user ke bohot se notes ho sakte hain
-User.hasMany(Note, { foreignKey: 'userId', onDelete: 'CASCADE' });
-Note.belongsTo(User, { foreignKey: 'userId' });
+User.hasMany(Note, { 
+    foreignKey: 'userId', 
+    as: 'notes',
+    onDelete: 'CASCADE' 
+});
+Note.belongsTo(User, {  
+    foreignKey: 'userId',
+    as: 'author' 
+});
 
 module.exports = Note;
