@@ -1,31 +1,75 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import toast from 'react-hot-toast';
-import ReactQuill from 'react-quill-new';
+import ReactQuill, { Quill } from 'react-quill-new';
 import { TagsInput } from "react-tag-input-component";
+import Sidebar from '../components/Sidebar';
+import { 
+  FiPaperclip, FiX, FiFile, FiSearch, FiPlus, 
+  FiTrash2, FiEdit3, FiCalendar, FiFilter,
+  FiMapPin, FiStar // Naye icons add kiye hain
+} from 'react-icons/fi';
 import 'react-quill-new/dist/quill.snow.css';
+
+// --- 1. PRO EDITOR REGISTRATION (Font & Style Fix) ---
+const ColorStyle = Quill.import('attributors/style/color');
+const BackgroundStyle = Quill.import('attributors/style/background');
+const SizeStyle = Quill.import('attributors/style/size');
+const FontStyle = Quill.import('attributors/style/font');
+
+SizeStyle.whitelist = ['10px', '12px', '14px', '16px', '18px', '20px', '24px', '32px'];
+FontStyle.whitelist = ['sans-serif', 'serif', 'monospace'];
+
+Quill.register(ColorStyle, true);
+Quill.register(BackgroundStyle, true);
+Quill.register(SizeStyle, true);
+Quill.register(FontStyle, true);
 
 const Dashboard = () => {
   const [user, setUser] = useState(null);
   const [notes, setNotes] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
+  const [sortBy, setSortBy] = useState('latest'); // Sorting State
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [newNote, setNewNote] = useState({ title: '', content: '', tags: [] });
   const [editingNoteId, setEditingNoteId] = useState(null);
+  const [file, setFile] = useState(null);
+  const fileInputRef = useRef(null);
+  const quillRef = useRef(null);
 
   const navigate = useNavigate();
   const token = localStorage.getItem('token');
+  const API_BASE_URL = 'http://localhost:5000';
 
+  // --- 2. QUILL TOOLBAR CONFIG ---
+  const quillModules = {
+    toolbar: {
+      container: [
+        [{ 'font': FontStyle.whitelist }],
+        [{ 'size': SizeStyle.whitelist }],
+        ['bold', 'italic', 'underline', 'strike'],
+        [{ 'color': [] }, { 'background': [] }],
+        [{ 'list': 'ordered' }, { 'list': 'bullet' }],
+        [{ 'align': [] }],
+        ['undo', 'redo', 'clean']
+      ],
+      handlers: {
+        undo: function() { this.quill.history.undo(); },
+        redo: function() { this.quill.history.redo(); }
+      }
+    },
+    history: { delay: 500, maxStack: 100, userOnly: true }
+  };
+
+  // --- 3. CORE FUNCTIONS ---
   const fetchNotes = async () => {
     try {
-      const res = await axios.get('http://localhost:5000/api/notes', {
+      const res = await axios.get(`${API_BASE_URL}/api/notes`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       setNotes(res.data);
-    } catch (err) {
-      console.error('Fetch error:', err);
-    }
+    } catch (err) { console.error('Fetch error:', err); }
   };
 
   useEffect(() => {
@@ -33,149 +77,271 @@ const Dashboard = () => {
     if (loggedInUser && token) {
       setUser(loggedInUser);
       fetchNotes();
-    } else {
-      navigate('/login');
-    }
+    } else { navigate('/login'); }
   }, []);
 
-  const handleLogout = () => {
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
-    toast.success('Logged out');
-    navigate('/login');
+  // --- 4. ADVANCED FILTER & SORT LOGIC ---
+  const filteredAndSortedNotes = notes
+    .filter(note => 
+      (note.title || '').toLowerCase().includes(searchQuery.toLowerCase()) || 
+      (note.tags && note.tags.some(tag => tag.toLowerCase().includes(searchQuery.toLowerCase())))
+    )
+    .sort((a, b) => {
+      // Pin Logic (Pinned notes always stay on top)
+      if (b.isPinned !== a.isPinned) return b.isPinned - a.isPinned;
+
+      // Other Sorting
+      if (sortBy === 'latest') return new Date(b.createdAt) - new Date(a.createdAt);
+      if (sortBy === 'oldest') return new Date(a.createdAt) - new Date(b.createdAt);
+      if (sortBy === 'alphabetical') return (a.title || "").localeCompare(b.title || "");
+      return 0;
+    });
+
+  // Naya Toggle Function Pin aur Favorite dono ke liye
+  const handleToggleFeature = async (id, field) => {
+    try {
+      const noteToUpdate = notes.find(n => n.id === id);
+      const res = await axios.put(`${API_BASE_URL}/api/notes/${id}`, 
+        { [field]: !noteToUpdate[field] },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      setNotes(notes.map(n => n.id === id ? res.data : n));
+      const msg = field === 'isPinned' ? (res.data.isPinned ? 'Pinned' : 'Unpinned') : (res.data.isFavorite ? 'Added to Stars' : 'Removed Star');
+      toast.success(msg);
+    } catch (err) { toast.error('Update failed'); }
   };
 
   const handleSaveNote = async (e) => {
     e.preventDefault();
+    const loadingToast = toast.loading('Syncing with database...');
     try {
+      const formData = new FormData();
+      formData.append('title', newNote.title);
+      formData.append('content', newNote.content);
+      formData.append('tags', JSON.stringify(newNote.tags));
+      if (file) formData.append('attachment', file);
+
+      let res;
       if (editingNoteId) {
-        const res = await axios.put(`http://localhost:5000/api/notes/${editingNoteId}`, newNote, {
-          headers: { Authorization: `Bearer ${token}` }
+        res = await axios.put(`${API_BASE_URL}/api/notes/${editingNoteId}`, formData, {
+          headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'multipart/form-data' }
         });
         setNotes(notes.map(n => n.id === editingNoteId ? res.data : n));
-        toast.success('Note updated');
       } else {
-        const res = await axios.post('http://localhost:5000/api/notes', newNote, {
-          headers: { Authorization: `Bearer ${token}` }
+        res = await axios.post(`${API_BASE_URL}/api/notes`, formData, {
+          headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'multipart/form-data' }
         });
         setNotes([res.data, ...notes]);
-        toast.success('Note created');
       }
-      setIsModalOpen(false);
-      setNewNote({ title: '', content: '', tags: [] });
-      setEditingNoteId(null);
-    } catch (err) {
-      toast.error('Operation failed');
-    }
+      toast.success('Note Secured!', { id: loadingToast });
+      closeModal();
+    } catch (err) { toast.error('Failed to save', { id: loadingToast }); }
+  };
+
+  const handleDelete = async (id) => {
+    if (!window.confirm('Are you sure you want to delete this note?')) return;
+    try {
+      await axios.delete(`${API_BASE_URL}/api/notes/${id}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setNotes(notes.filter(n => n.id !== id));
+      toast.success('Note removed');
+    } catch { toast.error('Delete failed'); }
+  };
+
+  const closeModal = () => {
+    setIsModalOpen(false);
+    setNewNote({ title: '', content: '', tags: [] });
+    setEditingNoteId(null);
+    setFile(null);
   };
 
   const handleEditClick = (note) => {
-    setNewNote({ title: note.title, content: note.content, tags: note.tags || [] });
+    setNewNote({ 
+      title: note.title, 
+      content: note.content, 
+      tags: Array.isArray(note.tags) ? note.tags : JSON.parse(note.tags || '[]') 
+    });
     setEditingNoteId(note.id);
     setIsModalOpen(true);
   };
 
-  const handleDelete = async (id) => {
-    if (window.confirm('Delete this note?')) {
-      try {
-        await axios.delete(`http://localhost:5000/api/notes/${id}`, {
-          headers: { Authorization: `Bearer ${token}` }
-        });
-        setNotes(notes.filter(note => note.id !== id));
-        toast.success('Note deleted');
-      } catch {
-        toast.error('Delete failed');
-      }
-    }
-  };
-
-  const filteredNotes = [...notes].filter(note => 
-    (note.title || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
-    (note.tags && note.tags.some(tag => tag.toLowerCase().includes(searchQuery.toLowerCase())))
-  );
-
   return (
-    <div className="min-h-screen bg-[#0a0f1e] text-white p-8">
-      <div className="max-w-6xl mx-auto flex flex-col md:flex-row justify-between items-center mb-12 bg-white/5 p-6 rounded-3xl border border-white/10 gap-6">
-        <div>
-          <h1 className="text-3xl font-black">Welcome, <span className="text-cyan-400">{user?.username}</span></h1>
-          <p className="text-white/50">Manage your formatted notes and tags.</p>
-        </div>
-        
-        <input 
-          type="text" 
-          placeholder="Search by title or tags..."
-          className="bg-white/5 border border-white/10 rounded-full px-6 py-2 outline-none focus:border-cyan-400 w-full md:w-72 transition"
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-        />
-
-        <button onClick={handleLogout} className="text-red-500 font-bold hover:text-red-400 transition">Logout</button>
-      </div>
-
-      <div className="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div 
-          onClick={() => { setIsModalOpen(true); setEditingNoteId(null); setNewNote({title:'', content:'', tags:[]}) }}
-          className="border-2 border-dashed border-white/10 rounded-[2rem] p-8 flex flex-col items-center justify-center cursor-pointer hover:border-cyan-400/40 transition min-h-[250px]"
-        >
-          <span className="text-5xl opacity-30">＋</span>
-          <span className="mt-4 font-bold text-white/30">Create Formatted Note</span>
-        </div>
-
-        {filteredNotes.map(note => (
-          <div key={note.id} className="bg-white/5 border border-white/10 rounded-[2rem] p-6 hover:-translate-y-1 transition flex flex-col justify-between min-h-[250px]">
-            <div>
-              <h3 className="text-xl font-bold text-cyan-400 mb-2 truncate">{note.title}</h3>
-              <div className="flex flex-wrap gap-2 mb-4">
-                {note.tags?.map(tag => (
-                  <span key={tag} className="text-[10px] bg-cyan-400/10 text-cyan-400 px-2 py-0.5 rounded border border-cyan-400/20">#{tag}</span>
-                ))}
-              </div>
-              <div className="text-white/70 prose prose-invert prose-sm line-clamp-4 overflow-hidden" dangerouslySetInnerHTML={{ __html: note.content }} />
+    <div className="flex min-h-screen bg-[#f8fafc]">
+      <Sidebar />
+      <main className="flex-1 ml-64 p-8">
+        {/* --- HEADER WITH SEARCH & SORT --- */}
+        <div className="max-w-6xl mx-auto flex flex-col md:flex-row justify-between items-center mb-8 bg-white p-6 rounded-2xl shadow-sm border border-slate-100 gap-4">
+          <div>
+            <h1 className="text-2xl font-black text-slate-800">Hello, {user?.username} 👋</h1>
+            <p className="text-slate-400 text-[10px] font-black uppercase tracking-[0.2em] mt-1">
+              Showing {filteredAndSortedNotes.length} Notes
+            </p>
+          </div>
+          
+          <div className="flex items-center gap-3 w-full md:w-auto">
+            {/* Sorting Dropdown */}
+            <div className="relative flex items-center bg-slate-50 border border-slate-200 rounded-xl px-3 group">
+              <FiFilter className="text-slate-400 group-focus-within:text-indigo-600" />
+              <select 
+                value={sortBy} 
+                onChange={(e) => setSortBy(e.target.value)}
+                className="bg-transparent pl-2 pr-4 py-3 text-[11px] font-black text-slate-500 uppercase outline-none cursor-pointer"
+              >
+                <option value="latest">Latest</option>
+                <option value="oldest">Oldest</option>
+                <option value="alphabetical">A-Z</option>
+              </select>
             </div>
-            
-            <div className="flex gap-4 pt-4 border-t border-white/5 mt-4">
-              <button onClick={() => handleEditClick(note)} className="text-sm font-bold text-white/30 hover:text-cyan-400">Edit</button>
-              <button onClick={() => handleDelete(note.id)} className="text-sm font-bold text-red-400/30 hover:text-red-500">Delete</button>
+
+            {/* Search Bar */}
+            <div className="relative group flex-1 md:flex-none">
+              <FiSearch className="absolute left-4 top-3.5 text-slate-400 group-focus-within:text-indigo-600 transition-colors" />
+              <input 
+                type="text" 
+                placeholder="Search notes..." 
+                className="pl-11 pr-6 py-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 w-full md:w-64 transition-all font-medium"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
             </div>
           </div>
-        ))}
-      </div>
+        </div>
 
-      {isModalOpen && (
-        <div className="fixed inset-0 bg-black/90 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-[#161b2c] w-full max-w-2xl rounded-[2.5rem] p-8 border border-white/10 shadow-2xl">
-            <h2 className="text-2xl font-bold text-cyan-400 mb-6">{editingNoteId ? 'Update Note' : 'New Note'}</h2>
-            <form onSubmit={handleSaveNote} className="space-y-6">
-              <input 
-                className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 outline-none focus:border-cyan-400 text-white"
-                placeholder="Note Title" 
-                value={newNote.title} 
-                onChange={e => setNewNote({...newNote, title: e.target.value})} 
-                required 
-              />
+        {/* --- NOTES GRID --- */}
+        <div className="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {/* New Note Button */}
+          <div onClick={() => { setIsModalOpen(true); setEditingNoteId(null); }} className="bg-white border-2 border-dashed border-slate-200 rounded-[2.5rem] p-8 flex flex-col items-center justify-center cursor-pointer hover:border-indigo-400 hover:bg-indigo-50/30 transition-all min-h-[250px] group shadow-sm">
+            <div className="w-12 h-12 bg-slate-100 rounded-full flex items-center justify-center text-slate-400 group-hover:bg-indigo-600 group-hover:text-white transition-all shadow-inner">
+              <FiPlus size={24} />
+            </div>
+            <span className="mt-4 font-black text-[11px] uppercase tracking-widest text-slate-400 group-hover:text-indigo-600">Create New Note</span>
+          </div>
+
+          {filteredAndSortedNotes.map(note => (
+            <div key={note.id} className={`bg-white border ${note.isPinned ? 'border-indigo-200 ring-4 ring-indigo-50' : 'border-slate-100'} rounded-[2.5rem] p-7 shadow-sm hover:shadow-xl transition-all flex flex-col justify-between group relative`}>
               
-              <div className="bg-white/5 rounded-xl overflow-hidden border border-white/10 min-h-[200px]">
-                <ReactQuill 
-                  theme="snow" 
-                  value={newNote.content} 
-                  onChange={val => setNewNote({...newNote, content: val})}
-                  placeholder="Write your note here (use toolbar for formatting)..."
-                />
+              {/* ACTION BUTTONS (PIN & STAR) */}
+              <div className="absolute top-7 right-7 flex items-center gap-2">
+                {/* Pin Button */}
+                <button 
+                  onClick={() => handleToggleFeature(note.id, 'isPinned')}
+                  className={`p-2 rounded-xl transition-all ${note.isPinned ? 'bg-indigo-600 text-white shadow-lg' : 'bg-slate-50 text-slate-300 hover:text-indigo-500'}`}
+                  title="Pin Note"
+                >
+                  <FiMapPin size={16} fill={note.isPinned ? "white" : "none"} />
+                </button>
+                {/* Favorite Star Button */}
+                <button 
+                  onClick={() => handleToggleFeature(note.id, 'isFavorite')}
+                  className={`p-2 rounded-xl transition-all ${note.isFavorite ? 'bg-amber-400 text-white shadow-lg' : 'bg-slate-50 text-slate-300 hover:text-amber-500'}`}
+                  title="Star Note"
+                >
+                  <FiStar size={16} fill={note.isFavorite ? "white" : "none"} />
+                </button>
               </div>
 
-              <div className="custom-tag-input text-black">
-                <TagsInput 
-                  value={newNote.tags} 
-                  onChange={tags => setNewNote({...newNote, tags})} 
-                  name="tags" 
-                  placeHolder="Enter tags and press enter" 
-                />
+              <div>
+                <div className="flex items-center gap-1.5 text-slate-300 mb-4">
+                  <FiCalendar size={12} />
+                  <span className="text-[10px] font-black uppercase tracking-tighter">
+                    {new Date(note.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                  </span>
+                </div>
+
+                <h3 className="text-lg font-bold text-slate-800 leading-tight mb-3 truncate pr-20">{note.title}</h3>
+                
+                {note.attachment && (
+                  <a href={`${API_BASE_URL}${note.attachment}`} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 text-indigo-600 bg-indigo-50 px-3 py-1 rounded-full text-[9px] font-black mb-4 border border-indigo-100">
+                    <FiPaperclip size={10}/> ATTACHMENT
+                  </a>
+                )}
+                
+                <div className="text-slate-500 text-sm line-clamp-4 mb-4" dangerouslySetInnerHTML={{ __html: note.content }} />
+                
+                <div className="flex flex-wrap gap-2">
+                  {(Array.isArray(note.tags) ? note.tags : []).map(tag => (
+                    <span key={tag} className="text-[9px] font-black bg-slate-50 text-slate-400 px-2 py-1 rounded-md uppercase border border-slate-100">#{tag}</span>
+                  ))}
+                </div>
               </div>
 
-              <div className="flex gap-3 pt-4">
-                <button type="button" onClick={() => setIsModalOpen(false)} className="flex-1 bg-white/5 py-3 rounded-xl font-bold hover:bg-white/10 transition">Cancel</button>
-                <button type="submit" className="flex-[2] bg-gradient-to-r from-cyan-500 to-blue-600 py-3 rounded-xl font-bold hover:brightness-110 transition">Save Note</button>
+              <div className="flex gap-4 pt-5 border-t border-slate-50 mt-6 opacity-0 group-hover:opacity-100 transition-opacity">
+                <button onClick={() => handleEditClick(note)} className="flex items-center gap-1 text-[11px] font-black text-indigo-600 uppercase tracking-widest hover:underline"><FiEdit3 size={12}/> Edit</button>
+                <button onClick={() => handleDelete(note.id)} className="flex items-center gap-1 text-[11px] font-black text-rose-400 uppercase tracking-widest hover:text-rose-600"><FiTrash2 size={12}/> Delete</button>
+              </div>
+            </div>
+          ))}
+        </div>
+      </main>
+
+      {/* --- MODAL SECTION --- */}
+      {isModalOpen && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white w-full max-w-4xl rounded-[3rem] p-10 max-h-[90vh] overflow-y-auto shadow-2xl">
+            <div className="flex justify-between items-center mb-8">
+              <h2 className="text-2xl font-black text-slate-800">{editingNoteId ? '✏️ Update Thought' : '✨ New Note'}</h2>
+              <button onClick={closeModal} className="p-3 bg-slate-50 hover:bg-rose-50 hover:text-rose-500 rounded-2xl transition-all text-slate-400"><FiX size={20}/></button>
+            </div>
+
+            <form onSubmit={handleSaveNote} className="space-y-6">
+              <div className="flex gap-4 items-end">
+                <div className="flex-1 space-y-2">
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] ml-1">Note Title</label>
+                  <input 
+                    className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-5 py-4 outline-none focus:border-indigo-500 focus:bg-white transition-all font-bold text-slate-700"
+                    placeholder="Capture your thought..."
+                    value={newNote.title} onChange={e => setNewNote({...newNote, title: e.target.value})} required 
+                  />
+                </div>
+                <div className="mb-1">
+                  <input type="file" ref={fileInputRef} onChange={(e) => setFile(e.target.files[0])} className="hidden" />
+                  <button type="button" onClick={() => fileInputRef.current.click()} className={`p-4 rounded-2xl border transition-all ${file ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white border-slate-200 text-slate-400 hover:border-indigo-500'}`}>
+                    <FiPaperclip size={24} />
+                  </button>
+                </div>
+              </div>
+
+              {file && (
+                <div className="flex items-center justify-between bg-indigo-50 p-4 rounded-2xl border border-indigo-100">
+                  <div className="flex items-center gap-3 text-indigo-700">
+                    <FiFile size={16}/>
+                    <span className="text-sm font-bold truncate max-w-[400px]">{file.name}</span>
+                  </div>
+                  <FiX className="cursor-pointer text-indigo-300 hover:text-rose-500" onClick={() => setFile(null)} />
+                </div>
+              )}
+
+              <div className="space-y-2">
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] ml-1">Content Editor</label>
+                <div className="bg-white rounded-2xl overflow-hidden border border-slate-200 quill-wrapper">
+                  <style>
+                    {`
+                      .quill-wrapper .ql-container { min-height: 250px; font-size: 16px; background: white; border: none !important; }
+                      .quill-wrapper .ql-toolbar { background: #fcfcfd; border:none !important; border-bottom: 1px solid #f1f5f9 !important; padding: 12px !important; }
+                      .ql-snow .ql-picker.ql-size .ql-picker-label::before { content: attr(data-value) !important; }
+                      .ql-snow .ql-picker.ql-size .ql-picker-label:not([data-value])::before { content: '16px' !important; }
+                    `}
+                  </style>
+                  <ReactQuill 
+                    ref={quillRef}
+                    theme="snow" 
+                    placeholder="Start typing your story..." 
+                    modules={quillModules}
+                    value={newNote.content} 
+                    onChange={val => setNewNote({...newNote, content: val})} 
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] ml-1">Tags</label>
+                <TagsInput value={newNote.tags} onChange={tags => setNewNote({...newNote, tags})} placeHolder="Tag it..." />
+              </div>
+
+              <div className="flex gap-4 pt-4">
+                <button type="button" onClick={closeModal} className="flex-1 bg-slate-50 text-slate-500 py-4 rounded-2xl font-black text-[11px] uppercase tracking-widest hover:bg-slate-100 transition-all border border-slate-200">Discard</button>
+                <button type="submit" className="flex-[2] bg-indigo-600 text-white py-4 rounded-2xl font-black text-[11px] uppercase tracking-widest hover:bg-indigo-700 shadow-xl shadow-indigo-200 transition-all active:scale-95">Save Note</button>
               </div>
             </form>
           </div>

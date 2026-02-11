@@ -1,10 +1,17 @@
 import { useState } from 'react';
 import axios from 'axios';
 import { useNavigate, Link } from 'react-router-dom';
+import toast from 'react-hot-toast'; // Toast notifications for better UI
 
 const Login = () => {
   const [formData, setFormData] = useState({ email: '', password: '' });
   const [loading, setLoading] = useState(false);
+  
+  // --- 2FA STATES ---
+  const [showOtpModal, setShowOtpModal] = useState(false);
+  const [otp, setOtp] = useState('');
+  const [tempUser, setTempUser] = useState(null); // Login ke baad user data temporarily yahan save hoga
+
   const navigate = useNavigate();
 
   const handleLogin = async (e) => {
@@ -13,15 +20,43 @@ const Login = () => {
     try {
       const response = await axios.post('http://localhost:5000/api/auth/login', formData);
       
-      localStorage.setItem('token', response.data.token); 
-      localStorage.setItem('user', JSON.stringify(response.data.user));
-
-      alert('🔑 Login Successful! Welcome back.');
-      navigate('/dashboard'); 
+      // Agar backend bole ke 2FA enabled hai
+      if (response.data.requires2FA) {
+        setTempUser(response.data); // OTP verify hone tak data save rakho
+        setShowOtpModal(true);
+        toast.success('🛡️ 2FA Required: OTP sent to your email!');
+      } else {
+        // Normal Login Process
+        localStorage.setItem('token', response.data.token); 
+        localStorage.setItem('user', JSON.stringify(response.data.user));
+        toast.success('🔑 Login Successful!');
+        navigate('/dashboard'); 
+      }
       
     } catch (err) {
       console.error(err);
-      alert(err.response?.data?.message || '❌ Login Failed');
+      toast.error(err.response?.data?.message || '❌ Login Failed');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // --- OTP VERIFICATION LOGIC ---
+  const handleVerifyOtp = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    try {
+      const response = await axios.post('http://localhost:5000/api/auth/verify-otp', {
+        email: formData.email,
+        otp: otp
+      });
+
+      localStorage.setItem('token', response.data.token);
+      localStorage.setItem('user', JSON.stringify(response.data.user));
+      toast.success('✅ Verification Successful!');
+      navigate('/dashboard');
+    } catch (err) {
+      toast.error(err.response?.data?.message || '❌ Invalid OTP');
     } finally {
       setLoading(false);
     }
@@ -66,7 +101,6 @@ const Login = () => {
                 onChange={(e) => setFormData({...formData, password: e.target.value})} 
                 required 
               />
-              {/* --- Forgot Password Link --- */}
               <div className="flex justify-end mt-2">
                 <Link 
                   to="/forgot-password" 
@@ -92,6 +126,45 @@ const Login = () => {
             </div>
           </form>
         </div>
+
+        {/* --- OTP MODAL SECTION --- */}
+        {showOtpModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-md">
+            <div className="bg-white rounded-[2.5rem] p-10 w-full max-w-md shadow-2xl border border-white/20 animate-in fade-in zoom-in duration-300">
+              <div className="text-center mb-8">
+                <div className="w-20 h-20 bg-indigo-50 rounded-3xl flex items-center justify-center mx-auto mb-4 text-4xl">🛡️</div>
+                <h2 className="text-2xl font-black text-slate-800">Verify Identity</h2>
+                <p className="text-slate-400 text-sm mt-2">Enter the 6-digit code sent to your email.</p>
+              </div>
+
+              <form onSubmit={handleVerifyOtp} className="space-y-6">
+                <input 
+                  type="text" 
+                  maxLength="6"
+                  placeholder="000000"
+                  className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-5 py-4 text-center text-3xl font-black tracking-[0.5em] text-slate-700 outline-none focus:border-indigo-500 transition-all"
+                  value={otp}
+                  onChange={(e) => setOtp(e.target.value)}
+                  required
+                />
+                <button 
+                  type="submit"
+                  disabled={loading}
+                  className="w-full bg-indigo-600 text-white py-4 rounded-2xl font-black text-[11px] uppercase tracking-widest hover:bg-indigo-700 shadow-xl shadow-indigo-100 transition-all"
+                >
+                  {loading ? 'Verifying...' : 'Verify & Access'}
+                </button>
+                <button 
+                  type="button"
+                  onClick={() => setShowOtpModal(false)}
+                  className="w-full text-slate-400 text-[10px] font-bold uppercase tracking-widest hover:text-rose-500 transition-all"
+                >
+                  Cancel
+                </button>
+              </form>
+            </div>
+          </div>
+        )}
 
         <div className="absolute top-0 left-0 w-full h-full pointer-events-none bg-gradient-to-tr from-transparent via-white/5 to-transparent rotate-12 transform scale-150"></div>
       </div>

@@ -5,6 +5,10 @@ import Signup from './pages/Signup';
 import Dashboard from './pages/Dashboard';
 import ForgotPassword from './pages/ForgotPassword';
 import ResetPassword from './pages/ResetPassword';
+import Profile from './pages/Profile';
+// Naye pages import kiye
+import AppSettings from './pages/AppSettings'; 
+import FavoriteNotes from './pages/FavoriteNotes';
 
 const ProtectedRoute = ({ children }) => {
   const token = localStorage.getItem('token');
@@ -19,9 +23,11 @@ function App() {
         reverseOrder={false} 
         toastOptions={{
           style: {
-            background: '#161b2c',
-            color: '#fff',
-            border: '1px solid rgba(255,255,255,0.1)',
+            background: '#ffffff',
+            color: '#1e293b',
+            border: '1px solid #e2e8f0',
+            fontWeight: 'bold',
+            borderRadius: '12px',
           },
         }}
       />
@@ -31,6 +37,7 @@ function App() {
         <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/reset-password/:token" element={<ResetPassword />} />
         
+        {/* Dashboard Route */}
         <Route 
           path="/dashboard" 
           element={
@@ -40,8 +47,40 @@ function App() {
           } 
         />
 
+        {/* Profile Route */}
+        <Route 
+          path="/profile" 
+          element={
+            <ProtectedRoute>
+              <Profile />
+            </ProtectedRoute>
+          } 
+        />
+
+        {/* --- NAYE ROUTES ADD KIYE --- */}
+        
+        {/* Favorite Notes Route */}
+        <Route 
+          path="/favorites" 
+          element={
+            <ProtectedRoute>
+              <FavoriteNotes />
+            </ProtectedRoute>
+          } 
+        />
+
+        {/* Settings Route */}
+        <Route 
+          path="/settings" 
+          element={
+            <ProtectedRoute>
+              <AppSettings />
+            </ProtectedRoute>
+          } 
+        />
+
         <Route path="/" element={<Navigate to="/login" />} />
-        <Route path="*" element={<div className="text-white p-10">404 - Page Not Found</div>} />
+        <Route path="*" element={<div className="bg-[#f1f5f9] min-h-screen flex items-center justify-center text-slate-800 font-bold text-2xl">404 - Page Not Found</div>} />
       </Routes>
     </Router>
   );
