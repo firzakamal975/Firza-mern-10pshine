@@ -1,16 +1,18 @@
 import { useState } from 'react';
 import axios from 'axios';
 import { useNavigate, Link } from 'react-router-dom';
-import toast from 'react-hot-toast'; // Toast notifications for better UI
+import toast from 'react-hot-toast';
+import { FiEye, FiEyeOff } from 'react-icons/fi'; // Naye icons add kiye
 
 const Login = () => {
   const [formData, setFormData] = useState({ email: '', password: '' });
   const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false); // Password visibility state
   
   // --- 2FA STATES ---
   const [showOtpModal, setShowOtpModal] = useState(false);
   const [otp, setOtp] = useState('');
-  const [tempUser, setTempUser] = useState(null); // Login ke baad user data temporarily yahan save hoga
+  const [tempUser, setTempUser] = useState(null);
 
   const navigate = useNavigate();
 
@@ -20,13 +22,11 @@ const Login = () => {
     try {
       const response = await axios.post('http://localhost:5000/api/auth/login', formData);
       
-      // Agar backend bole ke 2FA enabled hai
       if (response.data.requires2FA) {
-        setTempUser(response.data); // OTP verify hone tak data save rakho
+        setTempUser(response.data);
         setShowOtpModal(true);
         toast.success('🛡️ 2FA Required: OTP sent to your email!');
       } else {
-        // Normal Login Process
         localStorage.setItem('token', response.data.token); 
         localStorage.setItem('user', JSON.stringify(response.data.user));
         toast.success('🔑 Login Successful!');
@@ -41,7 +41,6 @@ const Login = () => {
     }
   };
 
-  // --- OTP VERIFICATION LOGIC ---
   const handleVerifyOtp = async (e) => {
     e.preventDefault();
     setLoading(true);
@@ -86,21 +85,31 @@ const Login = () => {
               <input 
                 type="email" 
                 placeholder="email@example.com" 
-                className="w-full bg-white rounded-xl px-5 py-4 text-slate-900 outline-none focus:ring-4 focus:ring-cyan-500/30 transition-all shadow-lg"
+                className="w-full bg-white rounded-xl px-5 py-4 text-slate-900 outline-none focus:ring-4 focus:ring-cyan-500/30 transition-all shadow-lg font-medium"
                 onChange={(e) => setFormData({...formData, email: e.target.value})} 
                 required 
               />
             </div>
 
+            {/* PASSWORD INPUT WITH SHOW/HIDE TOGGLE */}
             <div>
               <label className="text-white/70 text-xs font-bold uppercase mb-2 block ml-1 tracking-widest">Password</label>
-              <input 
-                type="password" 
-                placeholder="••••••••" 
-                className="w-full bg-white rounded-xl px-5 py-4 text-slate-900 outline-none focus:ring-4 focus:ring-cyan-500/30 transition-all shadow-lg"
-                onChange={(e) => setFormData({...formData, password: e.target.value})} 
-                required 
-              />
+              <div className="relative group">
+                <input 
+                  type={showPassword ? "text" : "password"} 
+                  placeholder="••••••••" 
+                  className="w-full bg-white rounded-xl px-5 py-4 text-slate-900 outline-none focus:ring-4 focus:ring-cyan-500/30 transition-all shadow-lg font-medium pr-14"
+                  onChange={(e) => setFormData({...formData, password: e.target.value})} 
+                  required 
+                />
+                <button 
+                  type="button" // Type button zaroori hai taake form submit na ho jaye
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-indigo-600 transition-colors p-2"
+                >
+                  {showPassword ? <FiEyeOff size={20} /> : <FiEye size={20} />}
+                </button>
+              </div>
               <div className="flex justify-end mt-2">
                 <Link 
                   to="/forgot-password" 
