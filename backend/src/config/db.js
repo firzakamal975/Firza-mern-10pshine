@@ -16,16 +16,14 @@ const connectDB = async () => {
   try {
     await sequelize.authenticate();
     console.log('✅ Database connected successfully!');
-    
-    // Tables sync karne ke liye (Optional but recommended)
-    // await sequelize.sync({ alter: true }); 
-    
   } catch (error) {
     console.error('❌ Database connection failed:', error.message);
     process.exit(1);
   }
 };
 
-// Isay is tarah export karein taake Model aur Server dono ko sahi cheez mile
-module.exports = sequelize; 
-module.exports.connectDB = connectDB;
+// --- Best Way to Export ---
+module.exports = {
+  sequelize, // Main instance models ke liye
+  connectDB  // Function server.js ke liye
+};

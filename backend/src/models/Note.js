@@ -1,5 +1,6 @@
 const { DataTypes } = require('sequelize');
-const sequelize = require('../config/db');
+// FIXED: Destructuring use karni hai kyunki db.js ab object export karta hai
+const { sequelize } = require('../config/db'); 
 const User = require('./User');
 
 const Note = sequelize.define('Note', {

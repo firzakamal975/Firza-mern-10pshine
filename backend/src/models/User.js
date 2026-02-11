@@ -1,5 +1,6 @@
 const { DataTypes } = require('sequelize');
-const sequelize = require('../config/db');
+// Sahi tareeqa: Destructure karke sirf 'sequelize' instance nikaalein
+const { sequelize } = require('../config/db'); 
 
 const User = sequelize.define('User', {
   username: {
@@ -32,7 +33,7 @@ const User = sequelize.define('User', {
     type: DataTypes.STRING,
     allowNull: true
   },
-  // --- 2FA New Fields Added Here ---
+  // --- 2FA New Fields ---
   twoFactorEnabled: {
     type: DataTypes.BOOLEAN,
     defaultValue: false
@@ -45,7 +46,7 @@ const User = sequelize.define('User', {
     type: DataTypes.DATE,
     allowNull: true
   },
-  // --------------------------------
+  // --- Password Reset Fields ---
   resetPasswordToken: {
     type: DataTypes.STRING,
     allowNull: true
