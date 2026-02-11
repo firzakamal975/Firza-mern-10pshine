@@ -39,7 +39,7 @@ const startServer = async () => {
     await connectDB();
     
     // Yahan sync models ke link hone ke baad hoga
-    await sequelize.sync({ alter: true });
+    await sequelize.sync({ alter: false });
     console.log('✅ Database & tables synced with Associations!');
 
     app.listen(PORT, () => {
@@ -52,3 +52,4 @@ const startServer = async () => {
 };
 
 startServer();
+module.exports = app;
