@@ -1,12 +1,32 @@
 const express = require('express');
 const router = express.Router();
-const { createNote, getNotes, deleteNote, updateNote } = require('../controllers/noteController');
+const { 
+    createNote, 
+    getNotes, 
+    deleteNote, 
+    updateNote, 
+    downloadNotePDF,  
+    downloadNoteText,
+    downloadNoteWord,
+    getPublicNote,
+    downloadNotePDFPublic // Naya public download function
+} = require('../controllers/noteController');
 const auth = require('../middleware/authMiddleware');
+const upload = require('../middleware/uploadMiddleware');
 
-// Sabhi routes ko protect karne ke liye 'auth' middleware use ho raha hai
-router.post('/', auth, createNote);      // Naya note banane ke liye
-router.get('/', auth, getNotes);        // Saare notes dekhne ke liye
-router.put('/:id', auth, updateNote);    // Note edit karne ke liye (Naya add kiya)
-router.delete('/:id', auth, deleteNote); // Note delete karne ke liye
+// --- Standard CRUD Routes (Login required) ---
+router.post('/', auth, upload.single('attachment'), createNote);
+router.get('/', auth, getNotes);
+router.put('/:id', auth, upload.single('attachment'), updateNote);
+router.delete('/:id', auth, deleteNote);
+
+// --- Public Access Routes (NO Login required) ---
+router.get('/share/public/:id', getPublicNote); 
+router.get('/download-pdf-public/:id', downloadNotePDFPublic); 
+
+// --- Private Download Routes ---
+router.get('/download-pdf/:id', auth, downloadNotePDF);
+router.get('/download-txt/:id', auth, downloadNoteText);
+router.get('/download-word/:id', auth, downloadNoteWord);
 
 module.exports = router;

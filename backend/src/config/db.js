@@ -1,4 +1,5 @@
 const { Sequelize } = require('sequelize');
+const logger = require('../utils/logger');
 require('dotenv').config();
 
 const sequelize = new Sequelize(
@@ -8,24 +9,19 @@ const sequelize = new Sequelize(
   {
     host: process.env.DB_HOST,
     dialect: 'mysql',
-    logging: false,
+    logging: (msg) => logger.info(msg), // Fix: No more console.log
+    pool: { max: 5, min: 0, acquire: 30000, idle: 10000 } // Fix: Reliability
   }
 );
 
 const connectDB = async () => {
   try {
     await sequelize.authenticate();
-    console.log('✅ Database connected successfully!');
-    
-    // Tables sync karne ke liye (Optional but recommended)
-    // await sequelize.sync({ alter: true }); 
-    
+    logger.info('Database connected successfully');
   } catch (error) {
-    console.error('❌ Database connection failed:', error.message);
+    logger.error(`Database connection failed: ${error.message}`);
     process.exit(1);
   }
 };
 
-// Isay is tarah export karein taake Model aur Server dono ko sahi cheez mile
-module.exports = sequelize; 
-module.exports.connectDB = connectDB;
+module.exports = { sequelize, connectDB };

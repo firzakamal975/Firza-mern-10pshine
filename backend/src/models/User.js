@@ -1,5 +1,5 @@
 const { DataTypes } = require('sequelize');
-const sequelize = require('../config/db');
+const { sequelize } = require('../config/db');
 
 const User = sequelize.define('User', {
   username: {
@@ -19,6 +19,31 @@ const User = sequelize.define('User', {
     type: DataTypes.STRING,
     allowNull: false
   },
+  gender: {
+    type: DataTypes.STRING,
+    allowNull: true,
+    defaultValue: ""
+  },
+  dob: {
+    type: DataTypes.DATEONLY,
+    allowNull: true
+  },
+  profilePic: {
+    type: DataTypes.STRING,
+    allowNull: true
+  },
+  twoFactorEnabled: {
+    type: DataTypes.BOOLEAN,
+    defaultValue: false
+  },
+  otpCode: {
+    type: DataTypes.STRING,
+    allowNull: true
+  },
+  otpExpires: {
+    type: DataTypes.DATE,
+    allowNull: true
+  },
   resetPasswordToken: {
     type: DataTypes.STRING,
     allowNull: true
@@ -27,6 +52,8 @@ const User = sequelize.define('User', {
     type: DataTypes.DATE,
     allowNull: true
   }
+}, {
+  timestamps: true 
 });
 
 module.exports = User;

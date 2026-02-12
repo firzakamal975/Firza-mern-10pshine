@@ -1,5 +1,6 @@
 const { DataTypes } = require('sequelize');
-const sequelize = require('../config/db');
+// FIXED: Destructuring use karni hai kyunki db.js ab object export karta hai
+const { sequelize } = require('../config/db'); 
 const User = require('./User');
 
 const Note = sequelize.define('Note', {
@@ -11,26 +12,37 @@ const Note = sequelize.define('Note', {
     title: {
         type: DataTypes.STRING,
         allowNull: false,
-        validate: {
-            notEmpty: true
-        }
+        validate: { notEmpty: true }
     },
     content: {
         type: DataTypes.TEXT,
         allowNull: false,
-        validate: {
-            notEmpty: true
-        }
+        validate: { notEmpty: true }
     },
     tags: {
         type: DataTypes.JSON,
         defaultValue: []
+    },
+    attachment: {
+        type: DataTypes.STRING,
+        allowNull: true
+    },
+    // --- PIN AUR FAVORITE KI NAYI FIELDS ---
+    isPinned: {
+        type: DataTypes.BOOLEAN,
+        defaultValue: false
+    },
+    isFavorite: {
+        type: DataTypes.BOOLEAN,
+        defaultValue: false
     }
+    // ---------------------------------------
 }, {
     tableName: 'notes',
     timestamps: true
 });
 
+// Relationships
 User.hasMany(Note, { 
     foreignKey: 'userId', 
     as: 'notes',
