@@ -20,7 +20,7 @@ const Sidebar = () => {
         <div className="w-10 h-10 bg-indigo-600 rounded-xl flex items-center justify-center font-black text-xl text-white shadow-lg shadow-indigo-200">
           N
         </div>
-        <span className="text-xl font-bold tracking-tight text-slate-800">NotesApp</span>
+        <span className="text-xl font-bold tracking-tight text-slate-800">Notly</span>
       </div>
 
       {/* Navigation Links */}

@@ -12,21 +12,21 @@ describe('Dashboard & Sidebar UI Tests', () => {
     expect(screen.getByText(/NotesApp/i)).toBeInTheDocument();
   });
 
-  // 14. Navigation Links (Fix: Home ki jagah Dashboard dhoond raha hai)
+  // 14. Navigation Links 
   it('14. shows navigation links like "Dashboard"', () => {
     render(<MemoryRouter><Sidebar /></MemoryRouter>);
     expect(screen.getByText(/Dashboard/i)).toBeInTheDocument();
     expect(screen.getByText(/Favorite Notes/i)).toBeInTheDocument();
   });
 
-  // 15. Search Bar (Fix: Placeholder "Search notes..." hai)
+  // 15. Search Bar 
   it('15. renders search bar in dashboard', () => {
     render(<MemoryRouter><Dashboard /></MemoryRouter>);
     const searchInput = screen.getByPlaceholderText(/Search notes/i);
     expect(searchInput).toBeInTheDocument();
   });
 
-  // 16. Add New Note (Fix: Aapke paas button nahi, "Create New Note" ka span hai)
+  // 16. Add New Note 
   it('16. shows "Create New Note" element', () => {
     render(<MemoryRouter><Dashboard /></MemoryRouter>);
     const addElement = screen.getByText(/Create New Note/i);
@@ -40,13 +40,13 @@ describe('Dashboard & Sidebar UI Tests', () => {
     expect(logoutBtn).toBeInTheDocument();
   });
 
-  // 18. User Profile (Fix: Aapke pass icon hai aur "Hello" likha hai)
+  // 18. User Profile
   it('18. displays greeting message', () => {
     render(<MemoryRouter><Dashboard /></MemoryRouter>);
     expect(screen.getByText(/Hello/i)).toBeInTheDocument();
   });
 
-  // 19. Empty State (Fix: Aapke pass "0 Notes" show ho raha hai)
+  // 19. Empty State 
   it('19. shows "0 Notes" if empty', () => {
     render(<MemoryRouter><Dashboard /></MemoryRouter>);
     expect(screen.getByText(/0 Notes/i)).toBeInTheDocument();

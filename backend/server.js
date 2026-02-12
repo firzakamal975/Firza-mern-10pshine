@@ -3,6 +3,7 @@ const dotenv = require('dotenv');
 const cors = require('cors');
 const path = require('path');
 const { sequelize, connectDB } = require('./src/config/db'); 
+const logger = require('./src/utils/logger'); // 1. Logger import karein
 
 // Models import karein associations ke liye
 const User = require('./src/models/User');
@@ -16,15 +17,16 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
-// Associations (Yahi delete fix karega)
+// Associations
 User.hasMany(Note, { foreignKey: 'userId', onDelete: 'CASCADE' });
 Note.belongsTo(User, { foreignKey: 'userId' });
 
 app.use('/api/auth', require('./src/routes/authRoutes'));
 app.use('/api/notes', require('./src/routes/noteRoutes'));
 
+// Error Middleware (Pino Use Karein)
 app.use((err, req, res, next) => {
-  console.error("Internal Server Error:", err.stack);
+  logger.error(`Internal Server Error: ${err.stack}`); // 2. console.error ki jagah
   res.status(500).json({ success: false, message: err.message });
 });
 
@@ -38,15 +40,14 @@ const startServer = async () => {
   try {
     await connectDB();
     
-    // Yahan sync models ke link hone ke baad hoga
     await sequelize.sync({ alter: false });
-    console.log('✅ Database & tables synced with Associations!');
+    logger.info('✅ Database & tables synced with Associations!'); // 3. Logger Info
 
     app.listen(PORT, () => {
-      console.log(`🚀 Server running on port ${PORT}`);
+      logger.info(`🚀 Server running on port ${PORT}`); // 4. Logger Info
     });
   } catch (err) {
-    console.error('❌ Server startup error: ' + err);
+    logger.error('❌ Server startup error: ' + err); // 5. Logger Error
     process.exit(1);
   }
 };
