@@ -78,7 +78,6 @@ const Dashboard = () => {
     } else { navigate('/login'); }
   }, []);
 
-  // --- DOWNLOAD LOGIC (Updated with Blob fix) ---
   const handleDownload = async (id, title, type) => {
     const loadingToast = toast.loading(`Preparing your ${type.toUpperCase()}...`);
     try {
@@ -87,7 +86,7 @@ const Dashboard = () => {
       
       const response = await axios.get(`${API_BASE_URL}/api/notes/${endpoint}/${id}`, {
         headers: { Authorization: `Bearer ${token}` },
-        responseType: 'blob', // Important for binary files
+        responseType: 'blob',
       });
 
       const mimeTypes = {
@@ -104,22 +103,16 @@ const Dashboard = () => {
       link.setAttribute('download', `${title.replace(/\s+/g, '_')}.${extension}`);
       document.body.appendChild(link);
       link.click();
-      
-      // Cleanup
       document.body.removeChild(link);
       window.URL.revokeObjectURL(url);
-      
       toast.success(`${type.toUpperCase()} Downloaded!`, { id: loadingToast });
     } catch (err) {
       toast.error('Download failed', { id: loadingToast });
     }
   };
 
-  // --- SHARE LOGIC (Updated for Public Access) ---
   const handleShare = async (note) => {
-    // Ye link ab hamare PublicView route par le jayega
     const shareUrl = `${window.location.origin}/view-note/${note.id}`;
-    
     if (navigator.share) {
       try {
         await navigator.share({
@@ -135,6 +128,7 @@ const Dashboard = () => {
     }
   };
 
+  // FIX: Sorting based on updatedAt instead of createdAt
   const filteredAndSortedNotes = notes
     .filter(note => 
       (note.title || '').toLowerCase().includes(searchQuery.toLowerCase()) || 
@@ -142,8 +136,8 @@ const Dashboard = () => {
     )
     .sort((a, b) => {
       if (b.isPinned !== a.isPinned) return b.isPinned - a.isPinned;
-      if (sortBy === 'latest') return new Date(b.createdAt) - new Date(a.createdAt);
-      if (sortBy === 'oldest') return new Date(a.createdAt) - new Date(b.createdAt);
+      if (sortBy === 'latest') return new Date(b.updatedAt) - new Date(a.updatedAt);
+      if (sortBy === 'oldest') return new Date(a.updatedAt) - new Date(b.updatedAt);
       if (sortBy === 'alphabetical') return (a.title || "").localeCompare(b.title || "");
       return 0;
     });
@@ -219,7 +213,6 @@ const Dashboard = () => {
     <div className="flex min-h-screen bg-[#f8fafc]">
       <Sidebar />
       <main className="flex-1 ml-64 p-8">
-        {/* Header Section */}
         <div className="max-w-6xl mx-auto flex flex-col md:flex-row justify-between items-center mb-8 bg-white p-6 rounded-2xl shadow-sm border border-slate-100 gap-4">
           <div>
             <h1 className="text-2xl font-black text-slate-800">Hello, {user?.username} 👋</h1>
@@ -243,7 +236,6 @@ const Dashboard = () => {
           </div>
         </div>
 
-        {/* Notes Grid */}
         <div className="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           <div onClick={() => { setIsModalOpen(true); setEditingNoteId(null); }} className="bg-white border-2 border-dashed border-slate-200 rounded-[2.5rem] p-8 flex flex-col items-center justify-center cursor-pointer hover:border-indigo-400 hover:bg-indigo-50/30 transition-all min-h-[250px] group shadow-sm">
             <div className="w-12 h-12 bg-slate-100 rounded-full flex items-center justify-center text-slate-400 group-hover:bg-indigo-600 group-hover:text-white transition-all shadow-inner"><FiPlus size={24} /></div>
@@ -260,7 +252,10 @@ const Dashboard = () => {
               <div>
                 <div className="flex items-center gap-1.5 text-slate-300 mb-4">
                   <FiCalendar size={12} />
-                  <span className="text-[10px] font-black uppercase tracking-tighter">{new Date(note.createdAt).toLocaleDateString()}</span>
+                  {/* FIX: Showing updatedAt for accurate tracking */}
+                  <span className="text-[10px] font-black uppercase tracking-tighter">
+                    {new Date(note.updatedAt).toLocaleDateString()}
+                  </span>
                 </div>
                 <h3 className="text-lg font-bold text-slate-800 leading-tight mb-3 truncate pr-20">{note.title}</h3>
                 {note.attachment && (
@@ -274,7 +269,6 @@ const Dashboard = () => {
                 </div>
               </div>
 
-              {/* ACTION FOOTER */}
               <div className="flex items-center justify-between pt-5 border-t border-slate-50 mt-6">
                 <div className="flex gap-2">
                   <button onClick={() => handleEditClick(note)} className="p-2 text-indigo-600 hover:bg-indigo-50 rounded-xl transition-all"><FiEdit3 size={16}/></button>
@@ -292,7 +286,6 @@ const Dashboard = () => {
         </div>
       </main>
 
-      {/* MODAL SECTION */}
       {isModalOpen && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <div className="bg-white w-full max-w-4xl rounded-[3rem] p-10 max-h-[90vh] overflow-y-auto shadow-2xl">

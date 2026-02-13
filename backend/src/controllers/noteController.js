@@ -2,6 +2,7 @@ const Note = require('../models/Note');
 const PDFDocument = require('pdfkit');
 const { Document, Packer, Paragraph, TextRun } = require('docx');
 const { htmlToText } = require('html-to-text');
+const logger = require('../utils/logger');
 
 /* =====================================================
    1. Create New Note
@@ -40,6 +41,7 @@ exports.createNote = async (req, res) => {
 
     return res.status(201).json(note);
   } catch (error) {
+    logger.error(`Create Note Error: ${error.message}`);
     return res.status(500).json({ message: error.message });
   }
 };
@@ -51,7 +53,8 @@ exports.getNotes = async (req, res) => {
   try {
     const notes = await Note.findAll({
       where: { userId: req.user.id },
-      order: [['createdAt', 'DESC']],
+      // FIX: Latest updated notes will appear first
+      order: [['updatedAt', 'DESC']], 
     });
 
     return res.json(notes);
@@ -106,19 +109,18 @@ exports.updateNote = async (req, res) => {
     }
 
     if (req.file) {
-      updatedData.attachment = `/uploads/${req.file.filename}`.replace(
-        /\\/g,
-        '/'
-      );
+      updatedData.attachment = `/uploads/${req.file.filename}`.replace(/\\/g, '/');
     }
 
     if (tags) {
       updatedData.tags = typeof tags === 'string' ? JSON.parse(tags) : tags;
     }
 
+    // Sequelize automatically updates 'updatedAt' on .update()
     await note.update(updatedData);
     await note.reload();
 
+    logger.info(`Note updated: ${note.id} at ${note.updatedAt}`);
     return res.json(note);
   } catch (error) {
     return res.status(500).json({ message: error.message });
@@ -199,6 +201,12 @@ const generatePDF = (note, res) => {
     .fontSize(26)
     .text(note.title, { underline: true });
 
+  // Adding Date to PDF
+  doc
+    .fillColor('#666666')
+    .fontSize(10)
+    .text(`Last Updated: ${new Date(note.updatedAt).toLocaleString()}`, { align: 'right' });
+
   doc.moveDown();
 
   const cleanContent = htmlToText(note.content);
@@ -243,9 +251,8 @@ exports.downloadNoteWord = async (req, res) => {
             new Paragraph({
               children: [
                 new TextRun({
-                  text: `Date: ${new Date(
-                    note.createdAt
-                  ).toLocaleDateString()}`,
+                  // FIX: Display UpdatedAt instead of CreatedAt
+                  text: `Last Updated: ${new Date(note.updatedAt).toLocaleString()}`,
                   italic: true,
                   size: 20,
                 }),
@@ -297,7 +304,7 @@ exports.downloadNoteText = async (req, res) => {
 
     const fullText = `
 TITLE: ${note.title}
-DATE: ${new Date(note.createdAt).toLocaleString()}
+LAST UPDATED: ${new Date(note.updatedAt).toLocaleString()}
 
 ${cleanContent}
     `;
