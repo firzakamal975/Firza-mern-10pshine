@@ -39,8 +39,8 @@ cd Firza-mern-10pshine
 Bash
 cd backend
 npm install
-# Create a .env file and add your MONGO_URI and JWT_SECRET
-npm run start
+Create a .env file and add your MONGO_URI and JWT_SECRET
+npm start
 3. Frontend Setup
 Bash
 cd frontend
@@ -55,3 +55,56 @@ npm test
 
 # In frontend directory
 npm test
+
+Installation & Execution Guide
+Backend Setup (Node.js & Express)
+To set up the server-side environment and install all necessary middleware:
+
+PowerShell
+# Navigate to backend directory
+cd backend
+
+# Install Core Framework & Database (MongoDB/Mongoose)
+npm install express mongoose dotenv
+
+# Install Security & Authentication (JWT & Bcrypt)
+npm install jsonwebtoken bcryptjs
+
+# Install Logging & File Handling (Pino & Multer)
+npm install pino pino-pretty multer
+
+# Run the Backend Server
+npm run start
+Frontend Setup (React & Vite)
+To set up the client-side UI and styling tools:
+
+PowerShell
+# Navigate to frontend directory
+cd frontend
+
+# Install React Router & API Client (Axios)
+npm install react-router-dom axios
+
+# Install UI Icons & Styling (Tailwind CSS)
+npm install lucide-react
+npm install -D tailwindcss postcss autoprefixer
+npx tailwindcss init -p
+
+# Run the Frontend Development Server
+npm run dev
+Testing & Quality Assurance
+To run automated tests and code quality scans:
+
+PowerShell
+# Run Unit & Integration Tests (Vitest/Jest)
+npm test
+
+# Run SonarQube Code Analysis
+sonar-scanner
+SQL Server Integration (Optional)
+If you are using SQL Server instead of MongoDB as your primary database:
+
+PowerShell
+# Install SQL Server Driver
+cd backend
+npm install mssql
